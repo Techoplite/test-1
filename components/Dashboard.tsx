@@ -7,8 +7,8 @@ import type { DaySignal, Signal } from "@/lib/signals";
 const CACHE_KEY = "spx-vix-tlt-signals-cache-v1";
 
 const CHART_WIDTH = 720;
-const CHART_HEIGHT = 220;
-const CHART_PAD = { top: 16, right: 16, bottom: 28, left: 52 };
+const CHART_HEIGHT = 240;
+const CHART_PAD = { top: 16, right: 16, bottom: 40, left: 52 };
 
 type CacheEnvelope = {
   savedAt: string;
@@ -96,8 +96,6 @@ function PriceChart({
   const line = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
   const minClose = Math.min(...history.map((h) => h.close));
   const maxClose = Math.max(...history.map((h) => h.close));
-  const first = history[0];
-  const last = history[history.length - 1];
 
   return (
     <svg
@@ -129,17 +127,16 @@ function PriceChart({
       >
         {formatPrice(minClose, assetId)}
       </text>
-      <text x={CHART_PAD.left} y={CHART_HEIGHT - 8} className="chart-axis">
-        {first.date}
-      </text>
-      <text
-        x={CHART_WIDTH - CHART_PAD.right}
-        y={CHART_HEIGHT - 8}
-        textAnchor="end"
-        className="chart-axis"
-      >
-        {last.date}
-      </text>
+      {points.map((p) => (
+        <line
+          key={`grid-${p.date}`}
+          x1={p.x}
+          x2={p.x}
+          y1={CHART_PAD.top}
+          y2={CHART_HEIGHT - CHART_PAD.bottom}
+          className="chart-grid"
+        />
+      ))}
       <path d={line} className="chart-line" fill="none" />
       {points.map((p) =>
         p.signal === "none" ? null : (
@@ -156,6 +153,20 @@ function PriceChart({
           </circle>
         )
       )}
+      {points.map((p) => {
+        const dayNum = Number(p.date.slice(8, 10));
+        return (
+          <text
+            key={`day-${p.date}`}
+            x={p.x}
+            y={CHART_HEIGHT - 10}
+            textAnchor="middle"
+            className="chart-day"
+          >
+            {dayNum}
+          </text>
+        );
+      })}
     </svg>
   );
 }

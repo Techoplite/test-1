@@ -300,6 +300,12 @@ h1 {
   stroke-width: 1;
 }
 
+.chart-grid {
+  stroke: var(--border);
+  stroke-width: 1;
+  opacity: 0.35;
+}
+
 .chart-line {
   stroke: var(--accent);
   stroke-width: 2;
@@ -308,6 +314,12 @@ h1 {
 .chart-axis {
   fill: var(--muted);
   font-size: 10px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+}
+
+.chart-day {
+  fill: var(--muted);
+  font-size: 7px;
   font-family: var(--font-mono), ui-monospace, monospace;
 }
 
