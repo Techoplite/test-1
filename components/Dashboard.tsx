@@ -1,14 +1,12 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { SignalsResponse } from "@/app/api/signals/route";
 import type { AssetId, DaySignal, Signal } from "@/lib/signals";
 
 const CACHE_KEY = "spx-vix-tlt-signals-cache-v3";
 
-const CHART_WIDTH = 720;
-const CHART_HEIGHT = 258;
-const CHART_PAD = { top: 16, right: 16, bottom: 52, left: 52 };
+const CHART_PAD = { top: 16, right: 8, bottom: 52, left: 64 };
 
 const MONTHS = [
   "Jan",
@@ -85,14 +83,36 @@ function PriceChart({
   history: DaySignal[];
   assetId: string;
 }) {
+  const frameRef = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const el = frameRef.current;
+    if (!el) return;
+    const update = () => {
+      const rect = el.getBoundingClientRect();
+      setSize({
+        width: Math.max(1, Math.floor(rect.width)),
+        height: Math.max(1, Math.floor(rect.height)),
+      });
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const chartWidth = size.width;
+  const chartHeight = size.height;
+
   const points = useMemo(() => {
-    if (!history.length) return [];
+    if (!history.length || chartWidth < 2 || chartHeight < 2) return [];
     const closes = history.map((h) => h.close);
     const min = Math.min(...closes);
     const max = Math.max(...closes);
     const span = max - min || 1;
-    const innerW = CHART_WIDTH - CHART_PAD.left - CHART_PAD.right;
-    const innerH = CHART_HEIGHT - CHART_PAD.top - CHART_PAD.bottom;
+    const innerW = chartWidth - CHART_PAD.left - CHART_PAD.right;
+    const innerH = chartHeight - CHART_PAD.top - CHART_PAD.bottom;
 
     return history.map((h, i) => {
       const x =
@@ -103,16 +123,12 @@ function PriceChart({
       const y = CHART_PAD.top + (1 - (h.close - min) / span) * innerH;
       return { x, y, ...h };
     });
-  }, [history]);
-
-  if (!points.length) {
-    return <p className="muted">No chart data.</p>;
-  }
+  }, [history, chartWidth, chartHeight]);
 
   const line = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
-  const minClose = Math.min(...history.map((h) => h.close));
-  const maxClose = Math.max(...history.map((h) => h.close));
-  const plotBottom = CHART_HEIGHT - CHART_PAD.bottom;
+  const minClose = history.length ? Math.min(...history.map((h) => h.close)) : 0;
+  const maxClose = history.length ? Math.max(...history.map((h) => h.close)) : 0;
+  const plotBottom = chartHeight - CHART_PAD.bottom;
   const monthMarks: { key: string; label: string; x: number }[] = [];
   let monthStart = 0;
   for (let i = 1; i <= points.length; i++) {
@@ -131,17 +147,20 @@ function PriceChart({
   }
 
   return (
+    <div className="chart-frame" ref={frameRef}>
+      {points.length > 0 && (
     <svg
-      viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
+      viewBox={`0 0 ${chartWidth} ${chartHeight}`}
       className="chart"
+      preserveAspectRatio="none"
       role="img"
       aria-label={`${assetId} close prices`}
     >
       <rect
         x={CHART_PAD.left}
         y={CHART_PAD.top}
-        width={CHART_WIDTH - CHART_PAD.left - CHART_PAD.right}
-        height={CHART_HEIGHT - CHART_PAD.top - CHART_PAD.bottom}
+        width={chartWidth - CHART_PAD.left - CHART_PAD.right}
+        height={chartHeight - CHART_PAD.top - CHART_PAD.bottom}
         className="chart-bg"
       />
       <text
@@ -154,7 +173,7 @@ function PriceChart({
       </text>
       <text
         x={CHART_PAD.left - 8}
-        y={CHART_HEIGHT - CHART_PAD.bottom}
+        y={chartHeight - CHART_PAD.bottom}
         textAnchor="end"
         className="chart-axis"
       >
@@ -166,7 +185,7 @@ function PriceChart({
           x1={p.x}
           x2={p.x}
           y1={CHART_PAD.top}
-          y2={CHART_HEIGHT - CHART_PAD.bottom}
+          y2={chartHeight - CHART_PAD.bottom}
           className="chart-grid"
         />
       ))}
@@ -204,7 +223,7 @@ function PriceChart({
         <text
           key={`month-${month.key}`}
           x={month.x}
-          y={CHART_HEIGHT - 8}
+          y={chartHeight - 8}
           textAnchor="middle"
           className="chart-month"
         >
@@ -212,6 +231,8 @@ function PriceChart({
         </text>
       ))}
     </svg>
+      )}
+    </div>
   );
 }
 
@@ -276,6 +297,7 @@ export default function Dashboard() {
 
   return (
     <div className="page">
+      <div className="fold">
       <header className="header">
         <div>
           <p className="eyebrow">NYSE · 4:00 PM ET cash close</p>
@@ -361,9 +383,14 @@ export default function Dashboard() {
             })}
           </section>
 
-          <section className="panel">
+          <section className="panel chart-panel">
             <div className="panel-head">
-              <h3>~3 month price &amp; signals</h3>
+              <div>
+                <h3>~3 month price &amp; signals</h3>
+                <p className="legend muted small">
+                  Green / red dots mark bullish / bearish range-break days.
+                </p>
+              </div>
               <div className="tabs">
                 {data.assets.map((asset) => (
                   <button
@@ -378,12 +405,13 @@ export default function Dashboard() {
               </div>
             </div>
             <PriceChart history={chartHistory} assetId={chartAsset} />
-            <p className="legend muted small">
-              Green / red dots mark bullish / bearish range-break days for the
-              selected asset.
-            </p>
           </section>
+        </>
+      )}
+      </div>
 
+      {data && (
+        <>
           <section className="panel">
             <div className="panel-head">
               <h3>Session history</h3>
