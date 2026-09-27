@@ -7,11 +7,11 @@
   --border: #243041;
   --text: #e8eef7;
   --muted: #8b9bb0;
-  --accent: #5b9fd4;
-  --bull: #3dd68c;
-  --bull-bg: rgba(61, 214, 140, 0.12);
-  --bear: #ff6b6b;
-  --bear-bg: rgba(255, 107, 107, 0.12);
+  --accent: #6aa4c8;
+  --bull: #3cba7a;
+  --bull-bg: rgba(60, 186, 122, 0.12);
+  --bear: #d96b6b;
+  --bear-bg: rgba(217, 107, 107, 0.12);
   --warn: #f0c14b;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
@@ -104,8 +104,8 @@ html {
 }
 
 .logo {
-  width: 68px;
-  height: 68px;
+  width: 40px;
+  height: 40px;
   flex: none;
   border-radius: 50%;
   object-fit: cover;
@@ -140,9 +140,9 @@ h1 {
 .btn {
   appearance: none;
   border: 1px solid var(--border);
-  background: linear-gradient(180deg, #1c2738, #152033);
+  background: var(--bg-elevated);
   color: var(--text);
-  border-radius: 999px;
+  border-radius: 5px;
   padding: 0.6rem 1.1rem;
   font-weight: 600;
   cursor: pointer;
@@ -170,7 +170,7 @@ h1 {
   display: inline-flex;
   align-items: center;
   padding: 0.25rem 0.65rem;
-  border-radius: 999px;
+  border-radius: 4px;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   color: var(--text);
@@ -184,7 +184,7 @@ h1 {
 
 .banner {
   padding: 0.75rem 1rem;
-  border-radius: 10px;
+  border-radius: 5px;
   border: 1px solid var(--border);
 }
 
@@ -221,9 +221,8 @@ h1 {
 .card {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 5px;
   padding: 0.7rem 0.85rem 0.75rem;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
 }
 
 .card-top {
@@ -287,7 +286,7 @@ h1 {
   justify-content: center;
   min-width: 4.5rem;
   padding: 0.2rem 0.5rem;
-  border-radius: 999px;
+  border-radius: 4px;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -311,7 +310,7 @@ h1 {
 .panel {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 5px;
   padding: 1rem 1.1rem 1.15rem;
 }
 
@@ -339,7 +338,7 @@ h1 {
   border: 1px solid var(--border);
   background: transparent;
   color: var(--muted);
-  border-radius: 999px;
+  border-radius: 4px;
   padding: 0.3rem 0.75rem;
   cursor: pointer;
   font-size: 0.8rem;
@@ -359,7 +358,7 @@ h1 {
   flex-direction: column;
   overflow: hidden;
   width: 100%;
-  border-radius: 14px;
+  border-radius: 5px;
   padding: 0.85rem 1rem 0.75rem;
   margin-top: 0.35rem;
 }
@@ -371,8 +370,10 @@ h1 {
 
 .chart-frame {
   flex: 1 1 auto;
+  align-self: center;
   min-height: 0;
   width: 100%;
+  max-width: 1080px;
 }
 
 .chart {
@@ -516,4 +517,34 @@ thead th {
 .small {
   font-size: 0.8rem;
   margin: 0.15rem 0 0;
+}
+
+@media (min-width: 1100px) {
+  .price {
+    font-size: 1.7rem;
+  }
+
+  .pct {
+    font-size: 1.05rem;
+  }
+
+  .stats dd {
+    font-size: 1.05rem;
+  }
+
+  table {
+    font-size: 0.95rem;
+  }
+
+  .chart-axis {
+    font-size: 12px;
+  }
+
+  .chart-day {
+    font-size: 9px;
+  }
+
+  .chart-month {
+    font-size: 13px;
+  }
 }
