@@ -299,13 +299,20 @@ export default function Dashboard() {
     <div className="page">
       <div className="fold">
       <header className="header">
-        <div>
-          <p className="eyebrow">NYSE · 4:00 PM ET cash close</p>
-          <h1>SPX / NDX / VIX / TLT / US 10Y Daily Signals</h1>
-          <p className="subtitle">
-            Range-break signals vs prior session high/low · % change vs prior
-            close
-          </p>
+        <div className="brand">
+          <img
+            src="/silent-charts-logo.png"
+            alt="Silent Charts"
+            className="logo"
+          />
+          <div>
+            <p className="eyebrow">NYSE · 4:00 PM ET cash close</p>
+            <h1>SPX / NDX / VIX / TLT / US 10Y Daily Signals</h1>
+            <p className="subtitle">
+              Range-break signals vs prior session high/low · % change vs prior
+              close
+            </p>
+          </div>
         </div>
         <div className="header-actions">
           <button
