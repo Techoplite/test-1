@@ -390,6 +390,7 @@ export default function Dashboard() {
             })}
           </section>
 
+          <div className="split">
           <section className="panel chart-panel">
             <div className="panel-head">
               <div>
@@ -413,12 +414,7 @@ export default function Dashboard() {
             </div>
             <PriceChart history={chartHistory} assetId={chartAsset} />
           </section>
-        </>
-      )}
-      </div>
 
-      {data && (
-        <>
           <section className="panel history-fold">
             <div className="panel-head">
               <h3>Session history</h3>
@@ -485,26 +481,30 @@ export default function Dashboard() {
               </table>
             </div>
           </section>
-
-          <section className="panel rules">
-            <h3>Signal rules</h3>
-            <ul>
-              <li>
-                <strong>SPX / NDX:</strong> bullish if close &gt; prior day high;
-                bearish if close &lt; prior day low; else none.
-              </li>
-              <li>
-                <strong>VIX / TLT / US 10Y yield:</strong> bullish if close
-                &lt; prior day low; bearish if close &gt; prior day high; else
-                none.
-              </li>
-              <li>
-                Prices use regular-session daily OHLC (4:00 PM ET cash close).
-                The 10-year series is the CBOE yield (`^TNX`), shown in percent.
-              </li>
-            </ul>
-          </section>
+          </div>
         </>
+      )}
+      </div>
+
+      {data && (
+        <section className="panel rules">
+          <h3>Signal rules</h3>
+          <ul>
+            <li>
+              <strong>SPX / NDX:</strong> bullish if close &gt; prior day high;
+              bearish if close &lt; prior day low; else none.
+            </li>
+            <li>
+              <strong>VIX / TLT / US 10Y yield:</strong> bullish if close
+              &lt; prior day low; bearish if close &gt; prior day high; else
+              none.
+            </li>
+            <li>
+              Prices use regular-session daily OHLC (4:00 PM ET cash close).
+              The 10-year series is the CBOE yield (`^TNX`), shown in percent.
+            </li>
+          </ul>
+        </section>
       )}
     </div>
   );
