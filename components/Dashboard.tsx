@@ -7,8 +7,23 @@ import type { AssetId, DaySignal, Signal } from "@/lib/signals";
 const CACHE_KEY = "spx-vix-tlt-signals-cache-v3";
 
 const CHART_WIDTH = 720;
-const CHART_HEIGHT = 240;
-const CHART_PAD = { top: 16, right: 16, bottom: 40, left: 52 };
+const CHART_HEIGHT = 258;
+const CHART_PAD = { top: 16, right: 16, bottom: 52, left: 52 };
+
+const MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
 
 type CacheEnvelope = {
   savedAt: string;
@@ -97,6 +112,23 @@ function PriceChart({
   const line = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
   const minClose = Math.min(...history.map((h) => h.close));
   const maxClose = Math.max(...history.map((h) => h.close));
+  const plotBottom = CHART_HEIGHT - CHART_PAD.bottom;
+  const monthMarks: { key: string; label: string; x: number }[] = [];
+  let monthStart = 0;
+  for (let i = 1; i <= points.length; i++) {
+    const monthKey = points[monthStart].date.slice(0, 7);
+    const monthEnded =
+      i === points.length || points[i].date.slice(0, 7) !== monthKey;
+    if (!monthEnded) continue;
+    const slice = points.slice(monthStart, i);
+    const monthIndex = Number(points[monthStart].date.slice(5, 7)) - 1;
+    monthMarks.push({
+      key: monthKey,
+      label: MONTHS[monthIndex] ?? monthKey,
+      x: (slice[0].x + slice[slice.length - 1].x) / 2,
+    });
+    monthStart = i;
+  }
 
   return (
     <svg
@@ -160,7 +192,7 @@ function PriceChart({
           <text
             key={`day-${p.date}`}
             x={p.x}
-            y={CHART_HEIGHT - 10}
+            y={plotBottom + 14}
             textAnchor="middle"
             className="chart-day"
           >
@@ -168,6 +200,17 @@ function PriceChart({
           </text>
         );
       })}
+      {monthMarks.map((month) => (
+        <text
+          key={`month-${month.key}`}
+          x={month.x}
+          y={CHART_HEIGHT - 8}
+          textAnchor="middle"
+          className="chart-month"
+        >
+          {month.label}
+        </text>
+      ))}
     </svg>
   );
 }
