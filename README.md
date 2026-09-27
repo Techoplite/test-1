@@ -27,6 +27,6 @@ Market data is fetched server-side from Yahoo Finance via `/api/signals` (cached
 | SPX | Close &gt; prior day high | Close &lt; prior day low |
 | VIX | Close &lt; prior day low | Close &gt; prior day high |
 | TLT | Close &lt; prior day low | Close &gt; prior day high |
-| US 10Y yield (`^TNX`) | Yield close &gt; prior day high | Yield close &lt; prior day low |
+| US 10Y yield (`^TNX`) | Yield close &lt; prior day low | Yield close &gt; prior day high |
 
 Otherwise: **no signal**. Prices use regular-session daily OHLC (cash close).

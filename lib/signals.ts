@@ -8,10 +8,8 @@ export type AssetConfig = {
   label: string;
   yahooSymbol: string;
   /**
-   * breakout_up: close above prior high = bullish (SPX, US 10Y yield).
-   * breakout_down: close below prior low = bullish (VIX, TLT).
-   * US 10Y yield uses breakout_up so a higher yield matches TLT’s bullish case
-   * (bond price below the prior low).
+   * breakout_up: close above prior high = bullish (SPX).
+   * breakout_down: close below prior low = bullish (VIX, TLT, US 10Y yield).
    */
   style: "breakout_up" | "breakout_down";
 };
@@ -39,7 +37,7 @@ export const ASSETS: AssetConfig[] = [
     id: "US10Y",
     label: "US 10-Year Treasury Yield",
     yahooSymbol: "^TNX",
-    style: "breakout_up",
+    style: "breakout_down",
   },
 ];
 
@@ -69,7 +67,7 @@ export function computeSignal(
     if (close < priorLow) return "bearish";
     return "none";
   }
-  // breakout_down (VIX, TLT): close below prior low = bullish; above prior high = bearish
+  // breakout_down (VIX, TLT, US 10Y): close below prior low = bullish; above prior high = bearish
   if (close < priorLow) return "bullish";
   if (close > priorHigh) return "bearish";
   return "none";

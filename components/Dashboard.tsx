@@ -4,7 +4,7 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import type { SignalsResponse } from "@/app/api/signals/route";
 import type { AssetId, DaySignal, Signal } from "@/lib/signals";
 
-const CACHE_KEY = "spx-vix-tlt-signals-cache-v2";
+const CACHE_KEY = "spx-vix-tlt-signals-cache-v3";
 
 const CHART_WIDTH = 720;
 const CHART_HEIGHT = 240;
@@ -416,14 +416,9 @@ export default function Dashboard() {
                 bearish if close &lt; prior day low; else none.
               </li>
               <li>
-                <strong>VIX / TLT:</strong> bullish if close &lt; prior day low;
-                bearish if close &gt; prior day high; else none.
-              </li>
-              <li>
-                <strong>US 10Y yield:</strong> bullish if the yield closes
-                above the prior day high; bearish if it closes below the prior
-                day low; else none. A higher yield lines up with TLT’s bullish
-                case (bond price below the prior low).
+                <strong>VIX / TLT / US 10Y yield:</strong> bullish if close
+                &lt; prior day low; bearish if close &gt; prior day high; else
+                none.
               </li>
               <li>
                 Prices use regular-session daily OHLC (4:00 PM ET cash close).
