@@ -6,7 +6,7 @@ import type { AssetId, DaySignal, Signal } from "@/lib/signals";
 
 const CACHE_KEY = "spx-vix-tlt-signals-cache-v4";
 
-const CHART_PAD = { top: 16, right: 8, bottom: 52, left: 64 };
+const CHART_PAD = { top: 18, right: 8, bottom: 52, left: 16 };
 
 const MONTHS = [
   "Jan",
@@ -164,17 +164,17 @@ function PriceChart({
         className="chart-bg"
       />
       <text
-        x={CHART_PAD.left - 8}
-        y={CHART_PAD.top + 4}
-        textAnchor="end"
+        x={CHART_PAD.left}
+        y={CHART_PAD.top - 4}
+        textAnchor="start"
         className="chart-axis"
       >
         {formatPrice(maxClose, assetId)}
       </text>
       <text
-        x={CHART_PAD.left - 8}
-        y={chartHeight - CHART_PAD.bottom}
-        textAnchor="end"
+        x={CHART_PAD.left}
+        y={chartHeight - CHART_PAD.bottom + 12}
+        textAnchor="start"
         className="chart-axis"
       >
         {formatPrice(minClose, assetId)}
@@ -211,7 +211,7 @@ function PriceChart({
           <text
             key={`day-${p.date}`}
             x={p.x}
-            y={plotBottom + 14}
+            y={plotBottom + 26}
             textAnchor="middle"
             className="chart-day"
           >
