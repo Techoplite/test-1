@@ -360,6 +360,72 @@ h1 {
   cursor: pointer;
   font-size: 0.8rem;
   font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.tab-icon {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.chart-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.25rem;
+}
+
+.stress-gauge {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.gauge {
+  width: 280px;
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+.gauge-needle {
+  stroke: var(--text);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.gauge-hub {
+  fill: var(--text);
+}
+
+.gauge-label {
+  fill: var(--muted);
+  font-size: 11px;
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+.gauge-state,
+.gauge-note {
+  margin: 0;
+  text-align: center;
+}
+
+.gauge-state {
+  margin-top: -0.35rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
 .tab.active {
@@ -390,18 +456,12 @@ h1 {
 
 @media (min-width: 901px) {
   .split {
-    flex-direction: row;
-    align-items: stretch;
-    gap: 0.75rem;
+    flex-direction: column;
   }
 
-  .split > .chart-panel,
-  .split > .history-fold {
-    flex: 1 1 0;
-    width: 0;
-    min-width: 0;
-    min-height: 0;
-    height: auto;
+  .split > .chart-panel {
+    width: 100%;
+    height: 100%;
     margin: 0;
   }
 
@@ -409,6 +469,64 @@ h1 {
     max-width: none;
     align-self: stretch;
   }
+
+  .history-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    border: 0;
+    padding: 0;
+    background: rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.22s ease;
+  }
+
+  .history-backdrop.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .history-fold {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    width: 100vw;
+    height: 100dvh;
+    margin: 0;
+    border-radius: 0;
+    transform: translateX(100%);
+    transition: transform 0.22s ease;
+    box-shadow: none;
+  }
+
+  .history-fold.open {
+    transform: translateX(0);
+  }
+
+  .history-close,
+  .history-toggle {
+    display: inline-flex;
+  }
+}
+
+.history-backdrop {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .history-close,
+  .history-toggle {
+    display: none;
+  }
+}
+
+.chart-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
 }
 
 .chart-panel .panel-head {

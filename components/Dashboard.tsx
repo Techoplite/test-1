@@ -280,6 +280,63 @@ function PriceChart({
   );
 }
 
+function StressGauge({
+  spread,
+  history,
+}: {
+  spread: number;
+  history: DaySignal[];
+}) {
+  const bound = Math.max(1, ...history.map((row) => Math.abs(row.close)));
+  const clamped = Math.max(-1, Math.min(1, spread / bound));
+  const cx = 140;
+  const cy = 132;
+  const radius = 100;
+  const angle = Math.PI * (1 - (clamped + 1) / 2);
+  const nx = cx + (radius - 22) * Math.cos(angle);
+  const ny = cy - (radius - 22) * Math.sin(angle);
+  const state = spread > 0 ? "HIGH" : spread < 0 ? "LOW" : "FLAT";
+  const bands: Array<[number, number, string]> = [
+    [0, 45, "#3cba7a"],
+    [45, 90, "#d6c15a"],
+    [90, 135, "#e0a04a"],
+    [135, 180, "#d96b6b"],
+  ];
+  const at = (t: number) => {
+    const radians = Math.PI - (t * Math.PI) / 180;
+    return [cx + radius * Math.cos(radians), cy - radius * Math.sin(radians)] as const;
+  };
+
+  return (
+    <div className="stress-gauge">
+      <svg viewBox="0 0 280 168" className="gauge" role="img" aria-label={`LME stress ${state}`}>
+        {bands.map(([start, end, color]) => {
+          const [x1, y1] = at(start);
+          const [x2, y2] = at(end);
+          return (
+            <path
+              key={start}
+              d={`M ${x1} ${y1} A ${radius} ${radius} 0 0 1 ${x2} ${y2}`}
+              fill="none"
+              stroke={color}
+              strokeWidth={18}
+              strokeLinecap="butt"
+            />
+          );
+        })}
+        <line x1={cx} y1={cy} x2={nx} y2={ny} className="gauge-needle" />
+        <circle cx={cx} cy={cy} r={5} className="gauge-hub" />
+        <text x={28} y={158} className="gauge-label">LOW</text>
+        <text x={252} y={158} textAnchor="end" className="gauge-label">HIGH</text>
+      </svg>
+      <p className="gauge-state">{state}</p>
+      <p className="muted small gauge-note">
+        {spread > 0 ? "Backwardation" : spread < 0 ? "Contango" : "Cash equals 3-month"}
+      </p>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [markets, setMarkets] = useState<SignalsResponse | null>(null);
   const [copper, setCopper] = useState<SignalsResponse | null>(null);
@@ -288,6 +345,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [fromCache, setFromCache] = useState(false);
   const [chartAsset, setChartAsset] = useState("SPX");
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const data = view === "copper" ? copper : markets;
 
@@ -342,6 +400,15 @@ export default function Dashboard() {
   useEffect(() => {
     void fetchSignals(false);
   }, [fetchSignals]);
+
+  useEffect(() => {
+    if (!historyOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setHistoryOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [historyOpen]);
 
   const historyByDate = useMemo(() => {
     if (!data) return [];
@@ -400,6 +467,10 @@ export default function Dashboard() {
               className={view === "markets" ? "tab active" : "tab"}
               onClick={() => setView("markets")}
             >
+              <svg viewBox="0 0 16 16" className="tab-icon" aria-hidden="true">
+                <path d="M1 12.5 5.2 7.8 8 10.2 15 2.5" />
+                <path d="M10.5 2.5H15V7" />
+              </svg>
               Markets
             </button>
             <button
@@ -407,6 +478,10 @@ export default function Dashboard() {
               className={view === "copper" ? "tab active" : "tab"}
               onClick={() => setView("copper")}
             >
+              <svg viewBox="0 0 16 16" className="tab-icon" aria-hidden="true">
+                <circle cx="8" cy="8" r="5.2" />
+                <path d="M8 4.8v6.4M5.6 6.4h4.8M5.6 9.6h4.8" />
+              </svg>
               Copper
             </button>
           </div>
@@ -511,6 +586,7 @@ export default function Dashboard() {
                     : "Green / red dots mark bullish / bearish range-break days."}
                 </p>
               </div>
+              <div className="chart-tools">
               <div className="tabs">
                 {data.assets.map((asset) => (
                   <button
@@ -523,17 +599,56 @@ export default function Dashboard() {
                   </button>
                 ))}
               </div>
+              <button
+                type="button"
+                className="tab history-toggle"
+                onClick={() => setHistoryOpen(true)}
+              >
+                <svg viewBox="0 0 16 16" className="tab-icon" aria-hidden="true">
+                  <rect x="1.5" y="2.5" width="13" height="11" rx="1.2" />
+                  <path d="M10 2.5v11" />
+                </svg>
+                History
+              </button>
+              </div>
             </div>
-            <PriceChart
-              history={chartHistory}
-              assetId={activeChart}
-              asset={chartAssetRecord}
-            />
+            <div className="chart-body">
+              {view === "copper" &&
+                data.assets.find((asset) => asset.id === "SPREAD") && (
+                  <StressGauge
+                    spread={
+                      data.assets.find((asset) => asset.id === "SPREAD")!.latest
+                        .close
+                    }
+                    history={
+                      data.assets.find((asset) => asset.id === "SPREAD")!.history
+                    }
+                  />
+                )}
+              <PriceChart
+                history={chartHistory}
+                assetId={activeChart}
+                asset={chartAssetRecord}
+              />
+            </div>
           </section>
 
-          <section className="panel history-fold">
+          <button
+            type="button"
+            className={historyOpen ? "history-backdrop open" : "history-backdrop"}
+            aria-label="Close session history"
+            onClick={() => setHistoryOpen(false)}
+          />
+          <section className={historyOpen ? "panel history-fold open" : "panel history-fold"}>
             <div className="panel-head">
               <h3>Session history</h3>
+              <button
+                type="button"
+                className="tab history-close"
+                onClick={() => setHistoryOpen(false)}
+              >
+                Close
+              </button>
             </div>
             <div className="table-wrap">
               <table>
