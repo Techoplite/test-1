@@ -1,6 +1,6 @@
-# SPX / VIX / TLT / US 10Y Daily Signals
+# SPX / NDX / VIX / TLT / US 10Y Daily Signals
 
-Single-page Next.js dashboard that records NYSE **4:00 PM ET** daily closes for **SPX**, **VIX**, **TLT**, and the **US 10-year Treasury yield**, shows percent change vs the prior close, and emits range-break bullish / bearish / none signals.
+Single-page Next.js dashboard that records NYSE **4:00 PM ET** daily closes for **SPX**, **NDX**, **VIX**, **TLT**, and the **US 10-year Treasury yield**, shows percent change vs the prior close, and emits range-break bullish / bearish / none signals.
 
 ## Local development
 
@@ -25,6 +25,7 @@ Market data is fetched server-side from Yahoo Finance via `/api/signals` (cached
 | Asset | Bullish | Bearish |
 | --- | --- | --- |
 | SPX | Close &gt; prior day high | Close &lt; prior day low |
+| NDX (`^NDX`) | Close &gt; prior day high | Close &lt; prior day low |
 | VIX | Close &lt; prior day low | Close &gt; prior day high |
 | TLT | Close &lt; prior day low | Close &gt; prior day high |
 | US 10Y yield (`^TNX`) | Yield close &lt; prior day low | Yield close &gt; prior day high |

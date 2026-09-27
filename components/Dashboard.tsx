@@ -4,7 +4,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import type { SignalsResponse } from "@/app/api/signals/route";
 import type { AssetId, DaySignal, Signal } from "@/lib/signals";
 
-const CACHE_KEY = "spx-vix-tlt-signals-cache-v3";
+const CACHE_KEY = "spx-vix-tlt-signals-cache-v4";
 
 const CHART_PAD = { top: 16, right: 8, bottom: 52, left: 64 };
 
@@ -301,7 +301,7 @@ export default function Dashboard() {
       <header className="header">
         <div>
           <p className="eyebrow">NYSE · 4:00 PM ET cash close</p>
-          <h1>SPX / VIX / TLT / US 10Y Daily Signals</h1>
+          <h1>SPX / NDX / VIX / TLT / US 10Y Daily Signals</h1>
           <p className="subtitle">
             Range-break signals vs prior session high/low · % change vs prior
             close
@@ -412,7 +412,7 @@ export default function Dashboard() {
 
       {data && (
         <>
-          <section className="panel">
+          <section className="panel history-fold">
             <div className="panel-head">
               <h3>Session history</h3>
             </div>
@@ -483,7 +483,7 @@ export default function Dashboard() {
             <h3>Signal rules</h3>
             <ul>
               <li>
-                <strong>SPX:</strong> bullish if close &gt; prior day high;
+                <strong>SPX / NDX:</strong> bullish if close &gt; prior day high;
                 bearish if close &lt; prior day low; else none.
               </li>
               <li>

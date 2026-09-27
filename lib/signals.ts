@@ -1,6 +1,6 @@
 import type { DailyBar } from "./yahoo";
 
-export type AssetId = "SPX" | "VIX" | "TLT" | "US10Y";
+export type AssetId = "SPX" | "NDX" | "VIX" | "TLT" | "US10Y";
 export type Signal = "bullish" | "bearish" | "none";
 
 export type AssetConfig = {
@@ -8,7 +8,7 @@ export type AssetConfig = {
   label: string;
   yahooSymbol: string;
   /**
-   * breakout_up: close above prior high = bullish (SPX).
+   * breakout_up: close above prior high = bullish (SPX, NDX).
    * breakout_down: close below prior low = bullish (VIX, TLT, US 10Y yield).
    */
   style: "breakout_up" | "breakout_down";
@@ -19,6 +19,12 @@ export const ASSETS: AssetConfig[] = [
     id: "SPX",
     label: "S&P 500 (SPX)",
     yahooSymbol: "^GSPC",
+    style: "breakout_up",
+  },
+  {
+    id: "NDX",
+    label: "Nasdaq-100 (NDX)",
+    yahooSymbol: "^NDX",
     style: "breakout_up",
   },
   {
