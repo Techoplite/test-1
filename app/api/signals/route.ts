@@ -60,11 +60,7 @@ export async function GET() {
     );
 
     const anyUnofficial = results.some((r) => !r.official);
-    const summary = summarizeSignals({
-      SPX: results.find((r) => r.id === "SPX")!.latest.signal,
-      VIX: results.find((r) => r.id === "VIX")!.latest.signal,
-      TLT: results.find((r) => r.id === "TLT")!.latest.signal,
-    });
+    const summary = summarizeSignals(results.map((r) => r.latest.signal));
 
     const body: SignalsResponse = {
       asOfEt: results[0]?.latest.date ?? et.date,

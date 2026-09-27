@@ -1,13 +1,18 @@
 import type { DailyBar } from "./yahoo";
 
-export type AssetId = "SPX" | "VIX" | "TLT";
+export type AssetId = "SPX" | "VIX" | "TLT" | "US10Y";
 export type Signal = "bullish" | "bearish" | "none";
 
 export type AssetConfig = {
   id: AssetId;
   label: string;
   yahooSymbol: string;
-  /** SPX breaks above prior high = bullish; VIX/TLT break below prior low = bullish */
+  /**
+   * breakout_up: close above prior high = bullish (SPX, US 10Y yield).
+   * breakout_down: close below prior low = bullish (VIX, TLT).
+   * US 10Y yield uses breakout_up so a higher yield matches TLT’s bullish case
+   * (bond price below the prior low).
+   */
   style: "breakout_up" | "breakout_down";
 };
 
@@ -29,6 +34,12 @@ export const ASSETS: AssetConfig[] = [
     label: "TLT",
     yahooSymbol: "TLT",
     style: "breakout_down",
+  },
+  {
+    id: "US10Y",
+    label: "US 10-Year Treasury Yield",
+    yahooSymbol: "^TNX",
+    style: "breakout_up",
   },
 ];
 
@@ -93,15 +104,10 @@ export function lastThreeMonths(signals: DaySignal[], now = new Date()): DaySign
   return signals.filter((s) => s.date >= cutoffStr);
 }
 
-export function summarizeSignals(latest: {
-  SPX: Signal;
-  VIX: Signal;
-  TLT: Signal;
-}) {
-  const values = [latest.SPX, latest.VIX, latest.TLT];
+export function summarizeSignals(signals: Signal[]) {
   return {
-    bullish: values.filter((s) => s === "bullish").length,
-    bearish: values.filter((s) => s === "bearish").length,
-    none: values.filter((s) => s === "none").length,
+    bullish: signals.filter((s) => s === "bullish").length,
+    bearish: signals.filter((s) => s === "bearish").length,
+    none: signals.filter((s) => s === "none").length,
   };
 }

@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SPX / VIX / TLT Daily Signals",
+  title: "SPX / VIX / TLT / US 10Y Daily Signals",
   description:
-    "NYSE 4:00 PM ET closing prices, percent change, and range-break bullish/bearish signals for SPX, VIX, and TLT.",
+    "NYSE 4:00 PM ET closes, percent change, and range-break signals for SPX, VIX, TLT, and the US 10-year Treasury yield.",
 };
 
 export default function RootLayout({

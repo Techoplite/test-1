@@ -2,9 +2,9 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import type { SignalsResponse } from "@/app/api/signals/route";
-import type { DaySignal, Signal } from "@/lib/signals";
+import type { AssetId, DaySignal, Signal } from "@/lib/signals";
 
-const CACHE_KEY = "spx-vix-tlt-signals-cache-v1";
+const CACHE_KEY = "spx-vix-tlt-signals-cache-v2";
 
 const CHART_WIDTH = 720;
 const CHART_HEIGHT = 240;
@@ -16,6 +16,7 @@ type CacheEnvelope = {
 };
 
 function formatPrice(n: number, id: string): string {
+  if (id === "US10Y") return `${n.toFixed(3)}%`;
   if (id === "VIX") return n.toFixed(2);
   return n.toLocaleString("en-US", {
     minimumFractionDigits: 2,
@@ -176,7 +177,7 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [fromCache, setFromCache] = useState(false);
-  const [chartAsset, setChartAsset] = useState<"SPX" | "VIX" | "TLT">("SPX");
+  const [chartAsset, setChartAsset] = useState<AssetId>("SPX");
 
   const fetchSignals = useCallback(async (force = false) => {
     setLoading(true);
@@ -213,15 +214,12 @@ export default function Dashboard() {
 
   const historyByDate = useMemo(() => {
     if (!data) return [];
-    const map = new Map<
-      string,
-      Partial<Record<"SPX" | "VIX" | "TLT", DaySignal>>
-    >();
+    const map = new Map<string, Partial<Record<AssetId, DaySignal>>>();
     for (const asset of data.assets) {
       for (const row of asset.history) {
         const key = row.date;
         const existing = map.get(key) ?? {};
-        existing[asset.id as "SPX" | "VIX" | "TLT"] = row;
+        existing[asset.id as AssetId] = row;
         map.set(key, existing);
       }
     }
@@ -238,7 +236,7 @@ export default function Dashboard() {
       <header className="header">
         <div>
           <p className="eyebrow">NYSE · 4:00 PM ET cash close</p>
-          <h1>SPX / VIX / TLT Daily Signals</h1>
+          <h1>SPX / VIX / TLT / US 10Y Daily Signals</h1>
           <p className="subtitle">
             Range-break signals vs prior session high/low · % change vs prior
             close
@@ -324,14 +322,14 @@ export default function Dashboard() {
             <div className="panel-head">
               <h3>~3 month price &amp; signals</h3>
               <div className="tabs">
-                {(["SPX", "VIX", "TLT"] as const).map((id) => (
+                {data.assets.map((asset) => (
                   <button
-                    key={id}
+                    key={asset.id}
                     type="button"
-                    className={chartAsset === id ? "tab active" : "tab"}
-                    onClick={() => setChartAsset(id)}
+                    className={chartAsset === asset.id ? "tab active" : "tab"}
+                    onClick={() => setChartAsset(asset.id as AssetId)}
                   >
-                    {id}
+                    {asset.id}
                   </button>
                 ))}
               </div>
@@ -352,28 +350,29 @@ export default function Dashboard() {
                 <thead>
                   <tr>
                     <th>Date</th>
-                    <th colSpan={3}>SPX</th>
-                    <th colSpan={3}>VIX</th>
-                    <th colSpan={3}>TLT</th>
+                    {data.assets.map((asset) => (
+                      <th key={asset.id} colSpan={3}>
+                        {asset.id}
+                      </th>
+                    ))}
                   </tr>
                   <tr className="subhead">
                     <th />
-                    <th>Close</th>
-                    <th>%</th>
-                    <th>Sig</th>
-                    <th>Close</th>
-                    <th>%</th>
-                    <th>Sig</th>
-                    <th>Close</th>
-                    <th>%</th>
-                    <th>Sig</th>
+                    {data.assets.map((asset) => (
+                      <Fragment key={`${asset.id}-sub`}>
+                        <th>{asset.id === "US10Y" ? "Yield" : "Close"}</th>
+                        <th>%</th>
+                        <th>Sig</th>
+                      </Fragment>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
                   {historyByDate.map((row) => (
                     <tr key={row.date}>
                       <td className="date">{row.date}</td>
-                      {(["SPX", "VIX", "TLT"] as const).map((id) => {
+                      {data.assets.map((asset) => {
+                        const id = asset.id as AssetId;
                         const cell = row[id];
                         if (!cell) {
                           return (
@@ -421,7 +420,14 @@ export default function Dashboard() {
                 bearish if close &gt; prior day high; else none.
               </li>
               <li>
+                <strong>US 10Y yield:</strong> bullish if the yield closes
+                above the prior day high; bearish if it closes below the prior
+                day low; else none. A higher yield lines up with TLT’s bullish
+                case (bond price below the prior low).
+              </li>
+              <li>
                 Prices use regular-session daily OHLC (4:00 PM ET cash close).
+                The 10-year series is the CBOE yield (`^TNX`), shown in percent.
               </li>
             </ul>
           </section>
