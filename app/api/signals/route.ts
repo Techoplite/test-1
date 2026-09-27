@@ -5,6 +5,7 @@ import {
   lastThreeMonths,
   summarizeSignals,
   type DaySignal,
+  type SignalBadge,
 } from "@/lib/signals";
 import {
   fetchDailyBars,
@@ -22,6 +23,11 @@ export type AssetPayload = {
   latest: DaySignal;
   history: DaySignal[];
   official: boolean;
+  badges?: SignalBadge;
+  changeMode?: "percent" | "points";
+  decimals?: number;
+  valueLabel?: string;
+  facts?: { label: string; value: string }[];
 };
 
 export type SignalsResponse = {

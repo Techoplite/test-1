@@ -1,10 +1,18 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { SignalsResponse } from "@/app/api/signals/route";
-import type { AssetId, DaySignal, Signal } from "@/lib/signals";
+import type { AssetPayload, SignalsResponse } from "@/app/api/signals/route";
+import type { DaySignal, Signal, SignalBadge } from "@/lib/signals";
 
-const CACHE_KEY = "spx-vix-tlt-signals-cache-v4";
+const MARKETS_CACHE_KEY = "spx-vix-tlt-signals-cache-v4";
+const COPPER_CACHE_KEY = "copper-signals-cache-v1";
+
+const RANGE_BADGE: SignalBadge = {
+  bullish: "BULLISH",
+  bearish: "BEARISH",
+  none: "—",
+  bearTone: "bear",
+};
 
 const CHART_PAD = { top: 18, right: 8, bottom: 52, left: 16 };
 
@@ -31,6 +39,21 @@ type CacheEnvelope = {
 function formatPrice(n: number, id: string): string {
   if (id === "US10Y") return `${n.toFixed(3)}%`;
   if (id === "VIX") return n.toFixed(2);
+  if (id === "HG" || id === "USDCNY") {
+    return n.toLocaleString("en-US", {
+      minimumFractionDigits: 4,
+      maximumFractionDigits: 4,
+    });
+  }
+  if (id === "SPREAD") {
+    return n.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
+  if (id === "LME") {
+    return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
+  }
   return n.toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -42,21 +65,40 @@ function formatPct(n: number): string {
   return `${sign}${n.toFixed(2)}%`;
 }
 
-function signalClass(signal: Signal): string {
+function formatChange(asset: AssetPayload, row: DaySignal): string {
+  if (asset.changeMode === "points") {
+    const delta = row.close - row.priorClose;
+    const sign = delta > 0 ? "+" : "";
+    return `${sign}${formatPrice(delta, asset.id)}`;
+  }
+  return formatPct(row.pctChange);
+}
+
+function badgesFor(asset: AssetPayload): SignalBadge {
+  return asset.badges ?? RANGE_BADGE;
+}
+
+function signalClass(signal: Signal, asset?: AssetPayload): string {
   if (signal === "bullish") return "signal signal-bull";
-  if (signal === "bearish") return "signal signal-bear";
+  if (signal === "bearish") {
+    return badgesFor(asset ?? { badges: RANGE_BADGE } as AssetPayload).bearTone ===
+      "orange"
+      ? "signal signal-orange"
+      : "signal signal-bear";
+  }
   return "signal signal-none";
 }
 
-function signalLabel(signal: Signal): string {
-  if (signal === "bullish") return "BULLISH";
-  if (signal === "bearish") return "BEARISH";
-  return "—";
+function signalLabel(signal: Signal, asset?: AssetPayload): string {
+  const badges = asset ? badgesFor(asset) : RANGE_BADGE;
+  if (signal === "bullish") return badges.bullish;
+  if (signal === "bearish") return badges.bearish;
+  return badges.none;
 }
 
-function loadCache(): CacheEnvelope | null {
+function loadCache(key: string): CacheEnvelope | null {
   try {
-    const raw = localStorage.getItem(CACHE_KEY);
+    const raw = localStorage.getItem(key);
     if (!raw) return null;
     return JSON.parse(raw) as CacheEnvelope;
   } catch {
@@ -64,13 +106,13 @@ function loadCache(): CacheEnvelope | null {
   }
 }
 
-function saveCache(data: SignalsResponse) {
+function saveCache(key: string, data: SignalsResponse) {
   try {
     const envelope: CacheEnvelope = {
       savedAt: new Date().toISOString(),
       data,
     };
-    localStorage.setItem(CACHE_KEY, JSON.stringify(envelope));
+    localStorage.setItem(key, JSON.stringify(envelope));
   } catch {
     // ignore quota / private mode
   }
@@ -79,9 +121,11 @@ function saveCache(data: SignalsResponse) {
 function PriceChart({
   history,
   assetId,
+  asset,
 }: {
   history: DaySignal[];
   assetId: string;
+  asset?: AssetPayload;
 }) {
   const frameRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -200,7 +244,7 @@ function PriceChart({
             className={p.signal === "bullish" ? "dot-bull" : "dot-bear"}
           >
             <title>
-              {p.date}: {signalLabel(p.signal)} ({formatPrice(p.close, assetId)})
+              {p.date}: {signalLabel(p.signal, asset)} ({formatPrice(p.close, assetId)})
             </title>
           </circle>
         )
@@ -237,39 +281,62 @@ function PriceChart({
 }
 
 export default function Dashboard() {
-  const [data, setData] = useState<SignalsResponse | null>(null);
+  const [markets, setMarkets] = useState<SignalsResponse | null>(null);
+  const [copper, setCopper] = useState<SignalsResponse | null>(null);
+  const [view, setView] = useState<"markets" | "copper">("markets");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [fromCache, setFromCache] = useState(false);
-  const [chartAsset, setChartAsset] = useState<AssetId>("SPX");
+  const [chartAsset, setChartAsset] = useState("SPX");
+
+  const data = view === "copper" ? copper : markets;
 
   const fetchSignals = useCallback(async (force = false) => {
     setLoading(true);
     setError(null);
-    try {
-      const url = force ? `/api/signals?t=${Date.now()}` : "/api/signals";
-      const res = await fetch(url, { cache: force ? "no-store" : "default" });
-      const json = await res.json();
-      if (!res.ok) {
-        throw new Error(json.error ?? `Request failed (${res.status})`);
-      }
-      const payload = json as SignalsResponse;
-      setData(payload);
-      setFromCache(false);
-      saveCache(payload);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to load";
-      const cached = loadCache();
-      if (cached) {
-        setData(cached.data);
-        setFromCache(true);
-        setError(`${message} — showing cached data from ${cached.savedAt}.`);
-      } else {
-        setError(message);
-      }
-    } finally {
-      setLoading(false);
+    const stamp = force ? `?t=${Date.now()}` : "";
+    const cacheMode = force ? "no-store" : "default";
+    const [marketsResult, copperResult] = await Promise.allSettled([
+      fetch(`/api/signals${stamp}`, { cache: cacheMode }).then(async (res) => {
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error ?? `Markets request failed (${res.status})`);
+        return json as SignalsResponse;
+      }),
+      fetch(`/api/copper${stamp}`, { cache: cacheMode }).then(async (res) => {
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error ?? `Copper request failed (${res.status})`);
+        return json as SignalsResponse;
+      }),
+    ]);
+
+    const problems: string[] = [];
+    if (marketsResult.status === "fulfilled") {
+      setMarkets(marketsResult.value);
+      saveCache(MARKETS_CACHE_KEY, marketsResult.value);
+    } else {
+      const cached = loadCache(MARKETS_CACHE_KEY);
+      if (cached) setMarkets(cached.data);
+      problems.push(
+        marketsResult.reason instanceof Error
+          ? marketsResult.reason.message
+          : "Markets refresh failed"
+      );
     }
+    if (copperResult.status === "fulfilled") {
+      setCopper(copperResult.value);
+      saveCache(COPPER_CACHE_KEY, copperResult.value);
+    } else {
+      const cached = loadCache(COPPER_CACHE_KEY);
+      if (cached) setCopper(cached.data);
+      problems.push(
+        copperResult.reason instanceof Error
+          ? copperResult.reason.message
+          : "Copper refresh failed"
+      );
+    }
+    setFromCache(problems.length > 0 && (marketsResult.status === "rejected" || copperResult.status === "rejected"));
+    setError(problems.length ? problems.join(" ") : null);
+    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -278,12 +345,12 @@ export default function Dashboard() {
 
   const historyByDate = useMemo(() => {
     if (!data) return [];
-    const map = new Map<string, Partial<Record<AssetId, DaySignal>>>();
+    const map = new Map<string, Partial<Record<string, DaySignal>>>();
     for (const asset of data.assets) {
       for (const row of asset.history) {
         const key = row.date;
         const existing = map.get(key) ?? {};
-        existing[asset.id as AssetId] = row;
+        existing[asset.id] = row;
         map.set(key, existing);
       }
     }
@@ -292,8 +359,11 @@ export default function Dashboard() {
       .map(([date, cols]) => ({ date, ...cols }));
   }, [data]);
 
-  const chartHistory =
-    data?.assets.find((a) => a.id === chartAsset)?.history ?? [];
+  const activeChart = data?.assets.some((asset) => asset.id === chartAsset)
+    ? chartAsset
+    : (data?.assets[0]?.id ?? chartAsset);
+  const chartAssetRecord = data?.assets.find((asset) => asset.id === activeChart);
+  const chartHistory = chartAssetRecord?.history ?? [];
 
   return (
     <div className="page">
@@ -306,15 +376,40 @@ export default function Dashboard() {
             className="logo"
           />
           <div>
-            <p className="eyebrow">NYSE · 4:00 PM ET cash close</p>
-            <h1>SPX / NDX / VIX / TLT / US 10Y Daily Signals</h1>
+            <p className="eyebrow">
+              {view === "copper"
+                ? "COMEX close · LME daily settlement"
+                : "NYSE · 4:00 PM ET cash close"}
+            </p>
+            <h1>
+              {view === "copper"
+                ? "Copper"
+                : "SPX / NDX / VIX / TLT / US 10Y Daily Signals"}
+            </h1>
             <p className="subtitle">
-              Range-break signals vs prior session high/low · % change vs prior
-              close
+              {view === "copper"
+                ? "USD/CNY, LME curve stress, and warehouse stock"
+                : "Range-break signals vs prior session high/low · % change vs prior close"}
             </p>
           </div>
         </div>
         <div className="header-actions">
+          <div className="tabs">
+            <button
+              type="button"
+              className={view === "markets" ? "tab active" : "tab"}
+              onClick={() => setView("markets")}
+            >
+              Markets
+            </button>
+            <button
+              type="button"
+              className={view === "copper" ? "tab active" : "tab"}
+              onClick={() => setView("copper")}
+            >
+              Copper
+            </button>
+          </div>
           <button
             type="button"
             className="btn"
@@ -335,8 +430,11 @@ export default function Dashboard() {
           <span className="pill">{data.marketNote}</span>
           {fromCache && <span className="pill warn">Cached</span>}
           <span className="pill">
-            {data.summary.bullish} bullish / {data.summary.bearish} bearish /{" "}
-            {data.summary.none} none
+            {view === "copper"
+              ? data.assets
+                  .map((asset) => `${asset.id} ${signalLabel(asset.latest.signal, asset)}`)
+                  .join(" · ")
+              : `${data.summary.bullish} bullish / ${data.summary.bearish} bearish / ${data.summary.none} none`}
           </span>
         </div>
       )}
@@ -347,10 +445,22 @@ export default function Dashboard() {
 
       {data && (
         <>
-          <section className="cards">
+          <section className={`cards${data.assets.length === 4 ? " count-4" : ""}`}>
             {data.assets.map((asset) => {
               const { latest } = asset;
-              const up = latest.pctChange >= 0;
+              const changeUp =
+                asset.changeMode === "points"
+                  ? latest.signal === "bullish"
+                  : latest.pctChange >= 0;
+              const changeDown = asset.changeMode === "points"
+                ? latest.signal === "bearish"
+                : latest.pctChange < 0;
+              const facts = asset.facts ?? [
+                { label: "Prior high", value: formatPrice(latest.priorHigh, asset.id) },
+                { label: "Prior low", value: formatPrice(latest.priorLow, asset.id) },
+                { label: "Prior close", value: formatPrice(latest.priorClose, asset.id) },
+                { label: "Session", value: asset.official ? "Official" : "Intraday" },
+              ];
               return (
                 <article key={asset.id} className="card">
                   <div className="card-top">
@@ -358,32 +468,32 @@ export default function Dashboard() {
                       <h2>{asset.id}</h2>
                       <p className="muted small">{asset.label}</p>
                     </div>
-                    <span className={signalClass(latest.signal)}>
-                      {signalLabel(latest.signal)}
+                    <span className={signalClass(latest.signal, asset)}>
+                      {signalLabel(latest.signal, asset)}
                     </span>
                   </div>
                   <p className="price">{formatPrice(latest.close, asset.id)}</p>
-                  <p className={up ? "pct up" : "pct down"}>
-                    {formatPct(latest.pctChange)}{" "}
-                    <span className="muted">vs prior close</span>
+                  <p
+                    className={
+                      changeUp
+                        ? "pct up"
+                        : changeDown
+                          ? `pct ${badgesFor(asset).bearTone === "orange" ? "supply" : "down"}`
+                          : "pct"
+                    }
+                  >
+                    {formatChange(asset, latest)}{" "}
+                    <span className="muted">
+                      {asset.changeMode === "points" ? "vs prior" : "vs prior close"}
+                    </span>
                   </p>
                   <dl className="stats">
-                    <div>
-                      <dt>Prior high</dt>
-                      <dd>{formatPrice(latest.priorHigh, asset.id)}</dd>
-                    </div>
-                    <div>
-                      <dt>Prior low</dt>
-                      <dd>{formatPrice(latest.priorLow, asset.id)}</dd>
-                    </div>
-                    <div>
-                      <dt>Prior close</dt>
-                      <dd>{formatPrice(latest.priorClose, asset.id)}</dd>
-                    </div>
-                    <div>
-                      <dt>Session</dt>
-                      <dd>{asset.official ? "Official" : "Intraday"}</dd>
-                    </div>
+                    {facts.map((fact) => (
+                      <div key={fact.label}>
+                        <dt>{fact.label}</dt>
+                        <dd>{fact.value}</dd>
+                      </div>
+                    ))}
                   </dl>
                 </article>
               );
@@ -396,7 +506,9 @@ export default function Dashboard() {
               <div>
                 <h3>~3 month price &amp; signals</h3>
                 <p className="legend muted small">
-                  Green / red dots mark bullish / bearish range-break days.
+                  {view === "copper"
+                    ? "Green is a supportive reading. Red or orange is the other side."
+                    : "Green / red dots mark bullish / bearish range-break days."}
                 </p>
               </div>
               <div className="tabs">
@@ -404,15 +516,19 @@ export default function Dashboard() {
                   <button
                     key={asset.id}
                     type="button"
-                    className={chartAsset === asset.id ? "tab active" : "tab"}
-                    onClick={() => setChartAsset(asset.id as AssetId)}
+                    className={activeChart === asset.id ? "tab active" : "tab"}
+                    onClick={() => setChartAsset(asset.id)}
                   >
                     {asset.id}
                   </button>
                 ))}
               </div>
             </div>
-            <PriceChart history={chartHistory} assetId={chartAsset} />
+            <PriceChart
+              history={chartHistory}
+              assetId={activeChart}
+              asset={chartAssetRecord}
+            />
           </section>
 
           <section className="panel history-fold">
@@ -434,8 +550,8 @@ export default function Dashboard() {
                     <th />
                     {data.assets.map((asset) => (
                       <Fragment key={`${asset.id}-sub`}>
-                        <th>{asset.id === "US10Y" ? "Yield" : "Close"}</th>
-                        <th>%</th>
+                        <th>{asset.valueLabel ?? (asset.id === "US10Y" ? "Yield" : "Close")}</th>
+                        <th>{asset.changeMode === "points" ? "Chg" : "%"}</th>
                         <th>Sig</th>
                       </Fragment>
                     ))}
@@ -446,30 +562,35 @@ export default function Dashboard() {
                     <tr key={row.date}>
                       <td className="date">{row.date}</td>
                       {data.assets.map((asset) => {
-                        const id = asset.id as AssetId;
-                        const cell = row[id];
+                        const cell = row[asset.id];
                         if (!cell) {
                           return (
-                            <Fragment key={`${row.date}-${id}`}>
+                            <Fragment key={`${row.date}-${asset.id}`}>
                               <td className="muted">—</td>
                               <td className="muted">—</td>
                               <td className="muted">—</td>
                             </Fragment>
                           );
                         }
+                        const changeClass =
+                          asset.changeMode === "points"
+                            ? cell.signal === "bullish"
+                              ? "up"
+                              : cell.signal === "bearish"
+                                ? badgesFor(asset).bearTone === "orange"
+                                  ? "supply"
+                                  : "down"
+                                : ""
+                            : cell.pctChange >= 0
+                              ? "up"
+                              : "down";
                         return (
-                          <Fragment key={`${row.date}-${id}`}>
-                            <td>{formatPrice(cell.close, id)}</td>
-                            <td
-                              className={
-                                cell.pctChange >= 0 ? "up" : "down"
-                              }
-                            >
-                              {formatPct(cell.pctChange)}
-                            </td>
+                          <Fragment key={`${row.date}-${asset.id}`}>
+                            <td>{formatPrice(cell.close, asset.id)}</td>
+                            <td className={changeClass}>{formatChange(asset, cell)}</td>
                             <td>
-                              <span className={signalClass(cell.signal)}>
-                                {signalLabel(cell.signal)}
+                              <span className={signalClass(cell.signal, asset)}>
+                                {signalLabel(cell.signal, asset)}
                               </span>
                             </td>
                           </Fragment>
@@ -489,21 +610,49 @@ export default function Dashboard() {
       {data && (
         <section className="panel rules">
           <h3>Signal rules</h3>
-          <ul>
-            <li>
-              <strong>SPX / NDX:</strong> bullish if close &gt; prior day high;
-              bearish if close &lt; prior day low; else none.
-            </li>
-            <li>
-              <strong>VIX / TLT / US 10Y yield:</strong> bullish if close
-              &lt; prior day low; bearish if close &gt; prior day high; else
-              none.
-            </li>
-            <li>
-              Prices use regular-session daily OHLC (4:00 PM ET cash close).
-              The 10-year series is the CBOE yield (`^TNX`), shown in percent.
-            </li>
-          </ul>
+          {view === "copper" ? (
+            <ul>
+              <li>
+                <strong>HG:</strong> COMEX copper. Bullish if the close is above
+                the prior day high; bearish if it is below the prior day low.
+              </li>
+              <li>
+                <strong>USD/CNY:</strong> bullish if the close is below the prior
+                day low (dollar weaker, yuan stronger). Bearish if the close is
+                above the prior day high.
+              </li>
+              <li>
+                <strong>LME spread:</strong> cash settlement minus the 3-month
+                forward. HIGH is backwardation (cash above 3-month). LOW is
+                contango (3-month above cash).
+              </li>
+              <li>
+                <strong>LME stock:</strong> a fall is scarcity (green). A rise is
+                abundance (orange).
+              </li>
+              <li>
+                SHFE and COMEX warehouse totals, and the Fed hike/cut probability
+                gauge, are not on a public daily feed this page can record. A cut
+                leaning is low stress for copper; a hike leaning is high stress.
+              </li>
+            </ul>
+          ) : (
+            <ul>
+              <li>
+                <strong>SPX / NDX:</strong> bullish if close &gt; prior day high;
+                bearish if close &lt; prior day low; else none.
+              </li>
+              <li>
+                <strong>VIX / TLT / US 10Y yield:</strong> bullish if close
+                &lt; prior day low; bearish if close &gt; prior day high; else
+                none.
+              </li>
+              <li>
+                Prices use regular-session daily OHLC (4:00 PM ET cash close).
+                The 10-year series is the CBOE yield (`^TNX`), shown in percent.
+              </li>
+            </ul>
+          )}
         </section>
       )}
     </div>

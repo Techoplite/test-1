@@ -1,5 +1,13 @@
 import type { DailyBar } from "./yahoo";
 
+export type BadgeTone = "bear" | "orange";
+
+export type SignalBadge = {
+  bullish: string;
+  bearish: string;
+  none: string;
+  bearTone: BadgeTone;
+};
 export type AssetId = "SPX" | "NDX" | "VIX" | "TLT" | "US10Y";
 export type Signal = "bullish" | "bearish" | "none";
 
