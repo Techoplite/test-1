@@ -423,7 +423,7 @@ export default function Dashboard() {
     }
     return [...map.entries()]
       .sort((a, b) => b[0].localeCompare(a[0]))
-      .map(([date, cols]) => ({ date, ...cols }));
+      .map(([date, cols]) => ({ date, cols }));
   }, [data]);
 
   const activeChart = data?.assets.some((asset) => asset.id === chartAsset)
@@ -677,7 +677,7 @@ export default function Dashboard() {
                     <tr key={row.date}>
                       <td className="date">{row.date}</td>
                       {data.assets.map((asset) => {
-                        const cell = row[asset.id];
+                        const cell = row.cols[asset.id];
                         if (!cell) {
                           return (
                             <Fragment key={`${row.date}-${asset.id}`}>
