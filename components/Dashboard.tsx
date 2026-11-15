@@ -1,7 +1,9 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { AssetPayload, SignalsResponse } from "@/app/api/signals/route";
+import ViewTabs from "@/components/ViewTabs";
 import type { DaySignal, Signal, SignalBadge } from "@/lib/signals";
 
 const MARKETS_CACHE_KEY = "spx-vix-tlt-signals-cache-v4";
@@ -337,10 +339,15 @@ function StressGauge({
   );
 }
 
-export default function Dashboard() {
+export default function Dashboard({
+  initialView = "markets",
+}: {
+  initialView?: "markets" | "copper";
+}) {
+  const router = useRouter();
   const [markets, setMarkets] = useState<SignalsResponse | null>(null);
   const [copper, setCopper] = useState<SignalsResponse | null>(null);
-  const [view, setView] = useState<"markets" | "copper">("markets");
+  const [view, setView] = useState<"markets" | "copper">(initialView);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [fromCache, setFromCache] = useState(false);
@@ -402,6 +409,15 @@ export default function Dashboard() {
   }, [fetchSignals]);
 
   useEffect(() => {
+    setView(initialView);
+  }, [initialView]);
+
+  function selectView(next: "markets" | "copper") {
+    setView(next);
+    router.replace(next === "copper" ? "/?view=copper" : "/", { scroll: false });
+  }
+
+  useEffect(() => {
     if (!historyOpen) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") setHistoryOpen(false);
@@ -461,30 +477,7 @@ export default function Dashboard() {
           </div>
         </div>
         <div className="header-actions">
-          <div className="tabs">
-            <button
-              type="button"
-              className={view === "markets" ? "tab active" : "tab"}
-              onClick={() => setView("markets")}
-            >
-              <svg viewBox="0 0 16 16" className="tab-icon" aria-hidden="true">
-                <path d="M1 12.5 5.2 7.8 8 10.2 15 2.5" />
-                <path d="M10.5 2.5H15V7" />
-              </svg>
-              Markets
-            </button>
-            <button
-              type="button"
-              className={view === "copper" ? "tab active" : "tab"}
-              onClick={() => setView("copper")}
-            >
-              <svg viewBox="0 0 16 16" className="tab-icon" aria-hidden="true">
-                <circle cx="8" cy="8" r="5.2" />
-                <path d="M8 4.8v6.4M5.6 6.4h4.8M5.6 9.6h4.8" />
-              </svg>
-              Copper
-            </button>
-          </div>
+          <ViewTabs active={view} onSelect={selectView} />
           <button
             type="button"
             className="btn"
